@@ -2,21 +2,21 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/lib/store/authStore';
 
 // Get API base URL from environment variable
-// In production on Vercel, this MUST be set in environment variables
+// In production, this MUST be set in environment variables (AWS Amplify, Elastic Beanstalk, etc.)
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 // Validate that API_BASE_URL is set in production
 if (!API_BASE_URL) {
   if (typeof window !== 'undefined') {
     console.error(
-      'NEXT_PUBLIC_API_BASE_URL is not set. Please configure it in your Vercel environment variables.'
+      'NEXT_PUBLIC_API_BASE_URL is not set. Please configure it in your deployment environment variables.'
     );
   }
   // In production, we should throw an error, but for development we allow localhost fallback
   if (process.env.NODE_ENV === 'production') {
     throw new Error(
       'NEXT_PUBLIC_API_BASE_URL environment variable is required but not set. ' +
-      'Please configure it in your Vercel project settings.'
+      'Please configure it in your deployment platform (AWS Amplify, Elastic Beanstalk, etc.).'
     );
   }
 }

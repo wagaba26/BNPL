@@ -228,10 +228,10 @@ function RegisterForm() {
       
       if (!err.response) {
         // Network error - backend not reachable
-        const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-        errorMessage = `Cannot connect to the backend server at ${apiUrl}. Please ensure:
+        const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'configured API URL');
+        errorMessage = `Cannot connect to the backend server${apiUrl ? ` at ${apiUrl}` : ''}. Please ensure:
           - The backend server is running
-          - NEXT_PUBLIC_API_BASE_URL is set correctly in your .env.local file
+          - NEXT_PUBLIC_API_BASE_URL is set correctly${process.env.NODE_ENV === 'development' ? ' in your .env.local file' : ' in your deployment environment variables'}
           - You have an active internet connection`;
       } else if (err.response?.status === 400) {
         errorMessage = err.response?.data?.detail || 'Invalid registration data. Please check your information and try again.';

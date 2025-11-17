@@ -17,6 +17,9 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['@tanstack/react-query', 'date-fns'],
   },
+  // Optional: Enable standalone output for smaller Docker images
+  // Uncomment the line below if using Docker and want optimized builds
+  // output: 'standalone',
 };
 
 module.exports = nextConfig;
