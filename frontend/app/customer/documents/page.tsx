@@ -5,39 +5,30 @@ import { useCreditDocuments, useUploadCreditDocument } from '@/lib/hooks/useCred
 import { CREDIT_DOCUMENT_TYPES } from '@/lib/creditConstants';
 import { formatDate, formatRelativeTime } from '@/lib/utils/creditHelpers';
 import type { CreditDocument } from '@/types/credit';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Card, CardContent } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
 
-function DocumentStatusBadge({ status }: { status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'NOT_UPLOADED' }) {
+function DocumentStatusBadge({
+  status,
+}: {
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'NOT_UPLOADED';
+}) {
   const statusConfig = {
-    APPROVED: {
-      label: 'Approved',
-      className: 'bg-green-100 text-green-800',
-    },
-    PENDING: {
-      label: 'Pending review',
-      className: 'bg-yellow-100 text-yellow-800',
-    },
-    REJECTED: {
-      label: 'Rejected',
-      className: 'bg-red-100 text-red-800',
-    },
-    NOT_UPLOADED: {
-      label: 'Not uploaded',
-      className: 'bg-gray-100 text-gray-800',
-    },
+    APPROVED: { label: 'Approved', variant: 'success' as const },
+    PENDING: { label: 'Pending review', variant: 'warning' as const },
+    REJECTED: { label: 'Rejected', variant: 'danger' as const },
+    NOT_UPLOADED: { label: 'Not uploaded', variant: 'default' as const },
   };
 
   const config = statusConfig[status] || statusConfig.NOT_UPLOADED;
 
-  return (
-    <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.className}`}
-    >
-      {config.label}
-    </span>
-  );
+  return <Badge variant={config.variant}>{config.label}</Badge>;
 }
 
-function DocumentRow({
+function DocumentCard({
   documentType,
   existingDocument,
   onUpload,
@@ -85,94 +76,100 @@ function DocumentRow({
   };
 
   return (
-    <div className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {documentType.label}
-            </h3>
-            <DocumentStatusBadge status={status} />
-          </div>
-          {documentType.description && (
-            <p className="text-sm text-gray-600 mb-2">{documentType.description}</p>
-          )}
+    <Card hover>
+      <CardContent className="p-6">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="text-lg font-bold text-gray-900">{documentType.label}</h3>
+              <DocumentStatusBadge status={status} />
+            </div>
+            {documentType.description && (
+              <p className="text-sm text-gray-600 mb-3">{documentType.description}</p>
+            )}
 
-          {existingDocument && (
-            <div className="mt-2 space-y-1">
-              <p className="text-xs text-gray-500">
-                Uploaded: {formatRelativeTime(existingDocument.uploadedAt)} (
-                {formatDate(existingDocument.uploadedAt)})
-              </p>
-              {existingDocument.reviewedAt && (
+            {existingDocument && (
+              <div className="mt-3 space-y-1.5">
                 <p className="text-xs text-gray-500">
-                  Reviewed: {formatRelativeTime(existingDocument.reviewedAt)} (
-                  {formatDate(existingDocument.reviewedAt)})
+                  Uploaded: {formatRelativeTime(existingDocument.uploadedAt)} (
+                  {formatDate(existingDocument.uploadedAt)})
                 </p>
-              )}
-              {existingDocument.notes && (
-                <p className="text-xs text-red-600 mt-1">
-                  Notes: {existingDocument.notes}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
+                {existingDocument.reviewedAt && (
+                  <p className="text-xs text-gray-500">
+                    Reviewed: {formatRelativeTime(existingDocument.reviewedAt)} (
+                    {formatDate(existingDocument.reviewedAt)})
+                  </p>
+                )}
+                {existingDocument.notes && (
+                  <p className="text-xs text-red-600 mt-2 font-medium">
+                    Notes: {existingDocument.notes}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
 
-        <div className="flex flex-col gap-2 md:w-auto w-full">
-          {!showUploadInput ? (
-            <>
-              {canUpload && (
-                <button
-                  onClick={() => setShowUploadInput(true)}
-                  disabled={isUploading}
-                  className="bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {status === 'REJECTED' ? 'Re-upload' : 'Upload'}
-                </button>
-              )}
-              {showUploadAgain && (
-                <button
-                  onClick={() => setShowUploadInput(true)}
-                  disabled={isUploading}
-                  className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Upload again
-                </button>
-              )}
-            </>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                onChange={handleFileSelect}
-                className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
-              />
-              {selectedFile && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleUploadClick}
+          <div className="flex flex-col gap-2 md:w-auto w-full">
+            {!showUploadInput ? (
+              <>
+                {canUpload && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setShowUploadInput(true)}
                     disabled={isUploading}
-                    className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isUploading ? 'Uploading...' : 'Confirm Upload'}
-                  </button>
-                  <button
-                    onClick={handleCancel}
+                    {status === 'REJECTED' ? 'Re-upload' : 'Upload'}
+                  </Button>
+                )}
+                {showUploadAgain && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setShowUploadInput(true)}
                     disabled={isUploading}
-                    className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Cancel
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+                    Upload again
+                  </Button>
+                )}
+              </>
+            ) : (
+              <div className="flex flex-col gap-2 min-w-[200px]">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  onChange={handleFileSelect}
+                  className="text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                />
+                {selectedFile && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleUploadClick}
+                      disabled={isUploading}
+                      isLoading={isUploading}
+                      className="flex-1"
+                    >
+                      {isUploading ? 'Uploading...' : 'Confirm Upload'}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancel}
+                      disabled={isUploading}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -224,12 +221,10 @@ export default function DocumentsPage() {
         documentType: documentTypeId,
         file,
       });
-      // Success message will be handled by the UI state
+      await refetch();
     } catch (error) {
-      // Error is handled by the mutation state
       console.error('Upload failed:', error);
     } finally {
-      // Clear uploading state after a delay to allow UI to update
       setTimeout(() => {
         setUploadingDocumentType(null);
       }, 1000);
@@ -243,111 +238,112 @@ export default function DocumentsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Document Upload</h1>
-        <p className="mt-2 text-gray-600">
-          Upload documents to improve your credit score and unlock more BNPL products
-        </p>
-      </div>
+    <div className="max-w-7xl mx-auto w-full">
+      <PageHeader
+        title="Document Upload"
+        description="Upload documents to improve your credit score and unlock more BNPL products"
+      />
 
       {/* Info Card */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-        <div className="flex items-start">
-          <div className="flex-shrink-0">
-            <svg
-              className="h-5 w-5 text-blue-400"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </div>
-          <div className="ml-3 flex-1">
-            <h3 className="text-sm font-medium text-blue-800">
-              Improve your credit score
-            </h3>
-            <div className="mt-2 text-sm text-blue-700">
-              <p>
-                Upload verified documents to increase your credit score and unlock higher
-                BNPL limits. Approved documents help lenders assess your creditworthiness
-                and may improve your credit tier.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Documents List */}
-      {isLoading ? (
-        <div className="space-y-4">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-            <div key={i} className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse">
-              <div className="h-20 bg-gray-200 rounded"></div>
-            </div>
-          ))}
-        </div>
-      ) : error ? (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+      <Card className="mb-6 border-indigo-200 bg-indigo-50">
+        <CardContent className="p-6">
           <div className="flex items-start">
             <div className="flex-shrink-0">
               <svg
-                className="h-5 w-5 text-red-400"
+                className="h-5 w-5 text-indigo-600"
                 viewBox="0 0 20 20"
                 fill="currentColor"
               >
                 <path
                   fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
                   clipRule="evenodd"
                 />
               </svg>
             </div>
             <div className="ml-3 flex-1">
-              <h3 className="text-sm font-medium text-red-800">
-                Failed to load documents
+              <h3 className="text-sm font-semibold text-indigo-900">
+                Improve your credit score
               </h3>
-              <div className="mt-2 text-sm text-red-700">
+              <div className="mt-2 text-sm text-indigo-800">
                 <p>
-                  {error.message || 'An error occurred while loading your documents.'}
+                  Upload verified documents to increase your credit score and unlock higher
+                  BNPL limits. Approved documents help lenders assess your creditworthiness
+                  and may improve your credit tier.
                 </p>
-              </div>
-              <div className="mt-4">
-                <button
-                  onClick={() => refetch()}
-                  className="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                >
-                  Try Again
-                </button>
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Documents List */}
+      {isLoading ? (
+        <div className="space-y-4">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <Skeleton className="h-20" />
+              </CardContent>
+            </Card>
+          ))}
         </div>
+      ) : error ? (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-5 w-5 text-red-400"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="text-sm font-semibold text-red-800">
+                  Failed to load documents
+                </h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>{error.message || 'An error occurred while loading your documents.'}</p>
+                </div>
+                <div className="mt-4">
+                  <Button variant="danger" size="sm" onClick={() => refetch()}>
+                    Try Again
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       ) : documents && documents.length === 0 && CREDIT_DOCUMENT_TYPES.length > 0 ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
-          <svg
-            className="mx-auto h-12 w-12 text-gray-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No documents uploaded</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Start by uploading your mobile money statement or bank statement to begin
-            building your credit profile.
-          </p>
-        </div>
+        <Card>
+          <CardContent className="p-12 text-center">
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400 mb-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            <h3 className="mt-2 text-lg font-semibold text-gray-900">No documents uploaded</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Start by uploading your mobile money statement or bank statement to begin
+              building your credit profile.
+            </p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-4">
           {CREDIT_DOCUMENT_TYPES.map((docType) => {
@@ -356,7 +352,7 @@ export default function DocumentsPage() {
               uploadDocument.isPending && uploadingDocumentType === docType.id;
 
             return (
-              <DocumentRow
+              <DocumentCard
                 key={docType.id}
                 documentType={docType}
                 existingDocument={existingDoc}
@@ -368,13 +364,13 @@ export default function DocumentsPage() {
         </div>
       )}
 
-      {/* Success Message */}
+      {/* Success Toast */}
       {showSuccessToast && uploadDocument.isSuccess && (
-        <div className="fixed bottom-4 right-4 bg-green-50 border border-green-200 rounded-lg p-4 shadow-lg max-w-sm z-50">
+        <div className="fixed bottom-4 right-4 bg-white border border-green-200 rounded-xl shadow-lg p-4 max-w-sm z-50">
           <div className="flex items-start">
             <div className="flex-shrink-0">
               <svg
-                className="h-5 w-5 text-green-400"
+                className="h-5 w-5 text-green-600"
                 viewBox="0 0 20 20"
                 fill="currentColor"
               >
@@ -386,11 +382,11 @@ export default function DocumentsPage() {
               </svg>
             </div>
             <div className="ml-3 flex-1">
-              <p className="text-sm font-medium text-green-800">
+              <p className="text-sm font-semibold text-green-800">
                 Document uploaded successfully!
               </p>
               <p className="mt-1 text-sm text-green-700">
-                Your document is being reviewed. You'll be notified once it's processed.
+                Your document is being reviewed. You&apos;ll be notified once it&apos;s processed.
               </p>
             </div>
             <button
@@ -409,13 +405,13 @@ export default function DocumentsPage() {
         </div>
       )}
 
-      {/* Error Message */}
+      {/* Error Toast */}
       {showErrorToast && uploadDocument.isError && (
-        <div className="fixed bottom-4 right-4 bg-red-50 border border-red-200 rounded-lg p-4 shadow-lg max-w-sm z-50">
+        <div className="fixed bottom-4 right-4 bg-white border border-red-200 rounded-xl shadow-lg p-4 max-w-sm z-50">
           <div className="flex items-start">
             <div className="flex-shrink-0">
               <svg
-                className="h-5 w-5 text-red-400"
+                className="h-5 w-5 text-red-600"
                 viewBox="0 0 20 20"
                 fill="currentColor"
               >
@@ -427,7 +423,7 @@ export default function DocumentsPage() {
               </svg>
             </div>
             <div className="ml-3 flex-1">
-              <p className="text-sm font-medium text-red-800">Upload failed</p>
+              <p className="text-sm font-semibold text-red-800">Upload failed</p>
               <p className="mt-1 text-sm text-red-700">
                 {uploadDocument.error?.message ||
                   'Failed to upload document. Please try again.'}
@@ -451,4 +447,3 @@ export default function DocumentsPage() {
     </div>
   );
 }
-

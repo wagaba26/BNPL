@@ -3,6 +3,10 @@
 import { db } from "@/lib/instant";
 import Link from "next/link";
 import Image from "next/image";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Card, CardContent } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function MarketplacePage() {
   const { data, isLoading } = db.useQuery({
@@ -16,32 +20,61 @@ export default function MarketplacePage() {
   const products = data?.products ? Object.values(data.products) : [];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Marketplace</h1>
-        <p className="mt-2 text-gray-600">
-          Browse products available for Shift
-        </p>
-      </div>
+    <div className="max-w-7xl mx-auto w-full">
+      <PageHeader
+        title="Marketplace"
+        description="Browse products available for BNPL"
+      />
 
       {isLoading ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500">Loading products...</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <Card key={i}>
+              <Skeleton className="h-48 w-full rounded-t-xl" />
+              <CardContent className="p-4">
+                <Skeleton className="h-6 w-3/4 mb-2" />
+                <Skeleton className="h-4 w-full mb-2" />
+                <Skeleton className="h-4 w-2/3 mb-4" />
+                <Skeleton className="h-10 w-full" />
+              </CardContent>
+            </Card>
+          ))}
         </div>
       ) : !products || products.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <p className="text-gray-500 text-lg">No products available at the moment.</p>
-        </div>
+        <Card>
+          <CardContent className="p-12 text-center">
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400 mb-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+              />
+            </svg>
+            <p className="text-gray-500 text-lg font-medium">
+              No products available at the moment.
+            </p>
+            <p className="text-gray-400 text-sm mt-2">
+              Check back later for new products.
+            </p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {products.map((product: any) => {
             const deposit = (product.price * product.depositPercentage) / 100;
+            const remaining = product.price - deposit;
+            const monthlyPayment = remaining / (product.installmentMonths || 3);
+
             return (
-              <div
-                key={product.id}
-                className="bg-white rounded-lg shadow hover:shadow-lg transition overflow-hidden"
-              >
-                <div className="h-48 bg-gray-200 flex items-center justify-center relative">
+              <Card key={product.id} hover className="flex flex-col overflow-hidden">
+                {/* Product Image */}
+                <div className="relative h-48 w-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center overflow-hidden">
                   {product.imageUrl ? (
                     <Image
                       src={product.imageUrl}
@@ -50,46 +83,99 @@ export default function MarketplacePage() {
                       className="object-cover"
                     />
                   ) : (
-                    <span className="text-gray-400">No Image</span>
+                    <div className="text-center p-4">
+                      <svg
+                        className="w-16 h-16 text-gray-400 mx-auto"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                        />
+                      </svg>
+                      <p className="text-xs text-gray-500 mt-2">No Image</p>
+                    </div>
                   )}
                 </div>
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+
+                <CardContent className="p-5 flex-1 flex flex-col">
+                  {/* Product Name */}
+                  <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
                     {product.name}
                   </h3>
+
+                  {/* Description */}
                   {product.description && (
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                    <p className="text-sm text-gray-600 mb-4 line-clamp-2 flex-shrink-0">
                       {product.description}
                     </p>
                   )}
-                  <div className="space-y-2 mb-4">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Price:</span>
-                      <span className="text-sm font-semibold text-gray-900">
+
+                  {/* Price Section */}
+                  <div className="space-y-2 mb-4 flex-shrink-0">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        Price
+                      </span>
+                      <span className="text-xl font-bold text-gray-900">
                         UGX {product.price.toLocaleString()}
                       </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Deposit:</span>
-                      <span className="text-sm font-semibold text-primary-600">
-                        UGX {deposit.toLocaleString()}
-                      </span>
+
+                    {/* BNPL Breakdown */}
+                    <div className="bg-gray-50 rounded-lg p-3 space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-600">Deposit</span>
+                        <span className="font-semibold text-indigo-600">
+                          UGX {deposit.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-600">
+                          {product.installmentMonths || 3}x Monthly
+                        </span>
+                        <span className="font-semibold text-gray-900">
+                          UGX {Math.ceil(monthlyPayment).toLocaleString()}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Stock:</span>
-                      <span className="text-sm font-semibold text-gray-900">
-                        {product.stockQuantity} available
-                      </span>
-                    </div>
+
+                    {/* Stock */}
+                    {product.stockQuantity !== undefined && (
+                      <div className="flex items-center justify-between text-xs pt-1">
+                        <span className="text-gray-500">Stock</span>
+                        <span
+                          className={`font-semibold ${
+                            product.stockQuantity > 0
+                              ? 'text-green-600'
+                              : 'text-red-600'
+                          }`}
+                        >
+                          {product.stockQuantity} available
+                        </span>
+                      </div>
+                    )}
                   </div>
+
+                  {/* CTA Button */}
                   <Link
                     href={`/customer/checkout/${product.id}`}
-                    className="block w-full text-center bg-primary-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-primary-700 transition-colors shadow-sm hover:shadow-md"
+                    className="mt-auto"
                   >
-                    Buy Now, Pay Later
+                    <Button
+                      variant="primary"
+                      className="w-full"
+                      disabled={product.stockQuantity === 0}
+                    >
+                      Buy with BNPL
+                    </Button>
                   </Link>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             );
           })}
         </div>

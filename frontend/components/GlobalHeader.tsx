@@ -9,6 +9,7 @@ export function GlobalHeader() {
   const { logout, user, isAuthenticated } = useAuth();
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close menu when clicking outside
@@ -49,17 +50,20 @@ export function GlobalHeader() {
   };
 
   return (
-    <header className="bg-white shadow-sm border-b sticky top-0 z-50">
+    <header className="bg-white/90 backdrop-blur-xl shadow-fintech border-b border-slate-200/60 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold text-primary-600 hover:text-primary-700 transition-colors">
-              Shift
+            <Link href="/" className="flex items-center space-x-3 group">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary-600 via-primary-500 to-accent-500 rounded-xl flex items-center justify-center shadow-fintech group-hover:shadow-fintech-lg transition-all">
+                <span className="text-white font-bold text-lg">S</span>
+              </div>
+              <span className="text-xl font-bold gradient-text">Shift</span>
             </Link>
-            <nav className="hidden md:flex md:ml-10 md:space-x-8">
+            <nav className="hidden md:flex md:ml-10 md:space-x-1">
               <Link
                 href="/"
-                className="text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium"
+                className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
               >
                 Marketplace
               </Link>
@@ -67,13 +71,13 @@ export function GlobalHeader() {
                 <>
                   <Link
                     href="/customer/loans"
-                    className="text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium"
+                    className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
                   >
                     My Loans
                   </Link>
                   <Link
                     href="/customer/profile"
-                    className="text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium"
+                    className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
                   >
                     Profile
                   </Link>
@@ -82,16 +86,21 @@ export function GlobalHeader() {
             </nav>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             {isAuthenticated ? (
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setShowMenu(!showMenu)}
-                  className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none"
+                  className="flex items-center space-x-2 px-3 py-2 rounded-xl hover:bg-slate-100 transition-colors focus:outline-none"
                 >
-                  <span className="text-sm font-medium">{user?.name || user?.email}</span>
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white text-sm font-semibold shadow-fintech">
+                    {(user?.name || user?.email || 'U')[0].toUpperCase()}
+                  </div>
+                  <span className="hidden sm:inline text-sm font-medium text-slate-700">
+                    {user?.name || user?.email}
+                  </span>
                   <svg
-                    className="w-4 h-4"
+                    className="w-4 h-4 text-slate-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -106,36 +115,38 @@ export function GlobalHeader() {
                 </button>
 
                 {showMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border">
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-fintech-lg py-2 z-50 border border-slate-200/60 animate-slide-down backdrop-blur-xl">
                     <Link
                       href={getDashboardLink()}
                       onClick={() => setShowMenu(false)}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
                     >
-                      Dashboard
+                      <div className="font-semibold">Dashboard</div>
+                      <div className="text-xs text-slate-500 mt-0.5">Go to your dashboard</div>
                     </Link>
+                    <div className="border-t border-slate-100 my-1"></div>
                     <button
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="block w-full text-left px-4 py-2.5 text-sm text-danger-600 hover:bg-danger-50 transition-colors font-medium"
                     >
-                      Logout
+                      Sign out
                     </button>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
                 <Link
                   href="/login"
-                  className="text-gray-700 hover:text-gray-900 px-4 py-2 text-sm font-medium"
+                  className="text-slate-700 hover:text-slate-900 px-4 py-2 text-sm font-medium rounded-xl hover:bg-slate-100 transition-colors"
                 >
                   Login
                 </Link>
                 <Link
                   href="/register"
-                  className="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors shadow-sm hover:shadow-md"
+                  className="bg-gradient-to-r from-primary-600 to-primary-500 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:from-primary-700 hover:to-primary-600 transition-all shadow-fintech hover:shadow-fintech-lg"
                 >
-                  Register
+                  Get Started
                 </Link>
               </div>
             )}

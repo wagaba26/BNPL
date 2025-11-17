@@ -27,7 +27,7 @@ export default function RetailerProductsPage() {
     e.preventDefault();
     try {
       if (editingProduct) {
-        await updateProduct.mutateAsync({ id: editingProduct, data: formData });
+        await updateProduct.mutateAsync({ id: Number(editingProduct), data: formData });
       } else {
         await createProduct.mutateAsync(formData as CreateProductRequest);
       }
@@ -58,17 +58,17 @@ export default function RetailerProductsPage() {
       deposit: product.deposit,
       installments: product.installments,
       installment_frequency: product.installment_frequency,
-      min_credit_score: product.min_credit_score,
+      min_credit_score: (product as any).min_credit_score ?? product.min_required_score ?? 0,
       stock: product.stock,
       bnpl_eligible: product.bnpl_eligible,
     });
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string | number) => {
     if (confirm('Are you sure you want to delete this product?')) {
       try {
-        await deleteProduct.mutateAsync(id);
+        await deleteProduct.mutateAsync(Number(id));
       } catch (error) {
         console.error('Failed to delete product:', error);
       }
@@ -154,7 +154,7 @@ export default function RetailerProductsPage() {
                       UGX {product.price.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      UGX {product.deposit.toLocaleString()}
+                      UGX {product.deposit?.toLocaleString() ?? '0'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
@@ -169,7 +169,7 @@ export default function RetailerProductsPage() {
                       </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {product.min_credit_score}
+                      {(product as any).min_credit_score ?? product.min_required_score ?? 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {product.stock}

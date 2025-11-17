@@ -10,12 +10,24 @@ import Link from 'next/link';
 export default function CheckoutPage() {
   const params = useParams();
   const router = useRouter();
-  const productId = params.productId as string;
-  const { data: product, isLoading } = useProduct(productId);
+  const productId = params?.productId as string | undefined;
+  
+  // All hooks must be called unconditionally
+  const { data: product, isLoading } = useProduct(productId || '');
   const createBNPL = useCreateBNPL();
   const { isAuthenticated } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  
+  if (!productId) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          Invalid product ID
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -36,7 +48,9 @@ export default function CheckoutPage() {
   }
 
   const installmentAmount =
-    (product.price - product.deposit) / product.installments;
+    product.deposit && product.installments
+      ? (product.price - product.deposit) / product.installments
+      : 0;
   const installmentPeriod =
     product.installment_frequency === 'weekly' ? 'week' : 'month';
 
@@ -50,7 +64,7 @@ export default function CheckoutPage() {
     setError('');
 
     try {
-      await createBNPL.mutateAsync({ product_id: productId });
+      await createBNPL.mutateAsync({ product_id: Number(productId) });
       router.push('/customer/loans');
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to create BNPL request. Please try again.');
@@ -113,34 +127,39 @@ export default function CheckoutPage() {
             </span>
           </div>
 
-          <div className="flex justify-between py-2 border-t">
-            <span className="text-gray-600">Required Deposit</span>
-            <span className="font-semibold text-primary-600">
-              UGX {product.deposit.toLocaleString()}
-            </span>
-          </div>
+          {product.deposit !== undefined && (
+            <>
+              <div className="flex justify-between py-2 border-t">
+                <span className="text-gray-600">Required Deposit</span>
+                <span className="font-semibold text-primary-600">
+                  UGX {product.deposit.toLocaleString()}
+                </span>
+              </div>
 
-          <div className="flex justify-between py-2 border-t">
-            <span className="text-gray-600">Amount to Finance</span>
-            <span className="font-semibold text-gray-900">
-              UGX {(product.price - product.deposit).toLocaleString()}
-            </span>
-          </div>
-
-          <div className="mt-6 pt-6 border-t">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Installment Breakdown
-            </h3>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-sm text-gray-600 mb-2">
-                {product.installments} installments of{' '}
+              <div className="flex justify-between py-2 border-t">
+                <span className="text-gray-600">Amount to Finance</span>
                 <span className="font-semibold text-gray-900">
-                  UGX {installmentAmount.toLocaleString()}
-                </span>{' '}
-                per {installmentPeriod}
-              </p>
-              <div className="mt-4 space-y-2">
-                {Array.from({ length: product.installments }).map((_, idx) => (
+                  UGX {(product.price - (product.deposit || 0)).toLocaleString()}
+                </span>
+              </div>
+            </>
+          )}
+
+          {product.installments && product.installments > 0 && (
+            <div className="mt-6 pt-6 border-t">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Installment Breakdown
+              </h3>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-sm text-gray-600 mb-2">
+                  {product.installments} installments of{' '}
+                  <span className="font-semibold text-gray-900">
+                    UGX {installmentAmount.toLocaleString()}
+                  </span>{' '}
+                  per {installmentPeriod}
+                </p>
+                <div className="mt-4 space-y-2">
+                  {Array.from({ length: product.installments }).map((_, idx) => (
                   <div
                     key={idx}
                     className="flex justify-between text-sm text-gray-600"
@@ -148,10 +167,11 @@ export default function CheckoutPage() {
                     <span>Installment {idx + 1}</span>
                     <span>UGX {installmentAmount.toLocaleString()}</span>
                   </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="mt-6 pt-6 border-t">
             <div className="flex justify-between items-center">

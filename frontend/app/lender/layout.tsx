@@ -13,9 +13,12 @@ export default function LenderLayout({
   const router = useRouter();
 
   useEffect(() => {
+    // Only redirect on client-side after hydration
+    if (typeof window === 'undefined') return;
+    
     if (!isLoading) {
       if (!user) {
-        router.push("/login");
+        router.replace("/login");
         return;
       }
 
@@ -23,11 +26,11 @@ export default function LenderLayout({
       if (normalizedRole !== "LENDER") {
         // Redirect to appropriate dashboard
         if (normalizedRole === "CUSTOMER") {
-          router.push("/customer/dashboard");
+          router.replace("/customer/dashboard");
         } else if (normalizedRole === "RETAILER") {
-          router.push("/retailer/dashboard");
+          router.replace("/retailer/dashboard");
         } else {
-          router.push("/login");
+          router.replace("/login");
         }
       }
     }

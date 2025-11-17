@@ -13,6 +13,10 @@ const nextConfig = {
       },
     ],
   },
+  // Enable experimental features for better performance
+  experimental: {
+    optimizePackageImports: ['@tanstack/react-query', 'date-fns'],
+  },
 };
 
 module.exports = nextConfig;

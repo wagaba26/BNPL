@@ -102,13 +102,13 @@ export default function LenderLoansPage() {
                       {loan.customer_name_masked || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {loan.product_name || 'N/A'}
+                      Product #{loan.product_id}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       UGX {loan.principal_amount.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                      UGX {loan.outstanding_balance.toLocaleString()}
+                      UGX {(loan.total_amount - loan.deposit_amount).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span

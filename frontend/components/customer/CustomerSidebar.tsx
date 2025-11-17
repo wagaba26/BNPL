@@ -6,13 +6,15 @@ import { usePathname } from "next/navigation";
 type NavItem = {
   label: string;
   href: string;
-  icon: JSX.Element;
+  icon: React.ReactElement;
+  section?: string;
 };
 
 const navItems: NavItem[] = [
   {
     label: "Dashboard",
     href: "/customer/dashboard",
+    section: "Account",
     icon: (
       <svg
         className="w-5 h-5"
@@ -32,6 +34,7 @@ const navItems: NavItem[] = [
   {
     label: "Marketplace",
     href: "/customer/marketplace",
+    section: "BNPL",
     icon: (
       <svg
         className="w-5 h-5"
@@ -51,6 +54,7 @@ const navItems: NavItem[] = [
   {
     label: "My Loans",
     href: "/customer/loans",
+    section: "BNPL",
     icon: (
       <svg
         className="w-5 h-5"
@@ -70,6 +74,7 @@ const navItems: NavItem[] = [
   {
     label: "Credit Score",
     href: "/customer/credit",
+    section: "Credit Profile",
     icon: (
       <svg
         className="w-5 h-5"
@@ -89,6 +94,7 @@ const navItems: NavItem[] = [
   {
     label: "Documents / KYC",
     href: "/customer/documents",
+    section: "Credit Profile",
     icon: (
       <svg
         className="w-5 h-5"
@@ -108,6 +114,7 @@ const navItems: NavItem[] = [
   {
     label: "Profile",
     href: "/customer/profile",
+    section: "Account",
     icon: (
       <svg
         className="w-5 h-5"
@@ -129,34 +136,65 @@ const navItems: NavItem[] = [
 export function CustomerSidebar() {
   const pathname = usePathname();
 
+  // Group items by section
+  const sections = navItems.reduce((acc, item) => {
+    const section = item.section || "Other";
+    if (!acc[section]) {
+      acc[section] = [];
+    }
+    acc[section].push(item);
+    return acc;
+  }, {} as Record<string, NavItem[]>);
+
   return (
-    <nav className="flex flex-col h-full">
-      <div className="p-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">BNPL Platform</h2>
+    <nav className="flex flex-col h-full bg-white/95 backdrop-blur-xl border-r border-slate-200/60 shadow-sm">
+      {/* Logo/Brand */}
+      <div className="px-6 py-6 border-b border-slate-200/60 bg-gradient-to-br from-white via-primary-50/30 to-white">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-primary-600 via-primary-500 to-accent-500 rounded-xl flex items-center justify-center shadow-fintech">
+            <span className="text-white font-bold text-base">S</span>
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 tracking-tight">Shift</h2>
+            <p className="text-xs text-slate-500 font-medium">Customer Portal</p>
+          </div>
+        </div>
       </div>
-      <div className="flex-1 overflow-y-auto py-4">
-        <ul className="space-y-1 px-3">
-          {navItems.map((item) => {
-            const isActive = pathname.startsWith(item.href);
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                    isActive
-                      ? "bg-gray-900 text-white hover:bg-gray-900"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                  }`}
-                >
-                  {item.icon}
-                  <span>{item.label}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+
+      {/* Navigation Items */}
+      <div className="flex-1 overflow-y-auto py-6">
+        {Object.entries(sections).map(([sectionName, items]) => (
+          <div key={sectionName} className="mb-8">
+            <div className="px-6 mb-3">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                {sectionName}
+              </h3>
+            </div>
+            <ul className="space-y-1.5 px-3">
+              {items.map((item) => {
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                        isActive
+                          ? "bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-fintech"
+                          : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                      }`}
+                    >
+                      <span className={isActive ? "text-white" : "text-slate-500"}>
+                        {item.icon}
+                      </span>
+                      <span>{item.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
       </div>
     </nav>
   );
 }
-

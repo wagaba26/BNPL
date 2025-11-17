@@ -4,29 +4,17 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/contexts/AuthContext";
+import { Card, CardContent } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 
 export default function LoginPage() {
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login, user } = useAuth();
+  const { login } = useAuth();
   const router = useRouter();
-
-  const getDashboardPath = (role: string) => {
-    // Handle both uppercase and lowercase role values
-    const normalizedRole = role?.toUpperCase();
-    switch (normalizedRole) {
-      case "CUSTOMER":
-        return "/customer/dashboard";
-      case "RETAILER":
-        return "/retailer/dashboard";
-      case "LENDER":
-        return "/lender/dashboard";
-      default:
-        return "/";
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,31 +24,9 @@ export default function LoginPage() {
     try {
       const success = await login(emailOrUsername, password);
       if (success) {
-        // Wait a moment for auth state to update
-        await new Promise((resolve) => setTimeout(resolve, 300));
-        
-        // Get the user from context (it should be set by now)
-        // If user is available, redirect to their dashboard
-        // Otherwise, wait a bit more and check again
-        let currentUser = user;
-        if (!currentUser) {
-          await new Promise((resolve) => setTimeout(resolve, 200));
-          // Try to get user from localStorage as fallback
-          const storedUserStr = localStorage.getItem("bnpl_user");
-          if (storedUserStr) {
-            currentUser = JSON.parse(storedUserStr);
-          }
-        }
-        
-        if (currentUser && currentUser.role) {
-          const dashboardPath = getDashboardPath(currentUser.role);
-          router.push(dashboardPath);
-          router.refresh();
-        } else {
-          // Fallback: redirect to home page
-          router.push("/");
-          router.refresh();
-        }
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        router.push("/");
+        router.refresh();
       }
     } catch (err: any) {
       console.error("Login error in page:", err);
@@ -72,73 +38,99 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to Shift
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/40 to-slate-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-primary-200/20 rounded-full -mr-48 -mt-48 blur-3xl"></div>
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent-200/20 rounded-full -ml-48 -mb-48 blur-3xl"></div>
+      
+      <div className="max-w-md w-full space-y-8 animate-fade-in relative z-10">
+        <div className="text-center">
+          <Link href="/" className="inline-flex items-center space-x-3 mb-8 group">
+            <div className="w-12 h-12 bg-gradient-to-br from-primary-600 via-primary-500 to-accent-500 rounded-2xl flex items-center justify-center shadow-fintech-lg group-hover:shadow-fintech transition-all">
+              <span className="text-white font-bold text-xl">S</span>
+            </div>
+            <span className="text-3xl font-bold gradient-text">Shift</span>
+          </Link>
+          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-3">
+            Welcome back
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{" "}
-            <Link
-              href="/register"
-              className="font-medium text-primary-600 hover:text-primary-500"
-            >
-              create a new account
-            </Link>
+          <p className="text-slate-600 text-lg">
+            Sign in to your account to continue
           </p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="emailOrUsername" className="sr-only">
-                Email address or username
-              </label>
-              <input
-                id="emailOrUsername"
-                name="emailOrUsername"
-                type="text"
-                autoComplete="username"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                placeholder="Email address or username"
-                value={emailOrUsername}
-                onChange={(e) => setEmailOrUsername(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-          </div>
 
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? "Signing in..." : "Sign in"}
-            </button>
-          </div>
-        </form>
+        <Card className="shadow-fintech-lg border-slate-200/60 backdrop-blur-sm">
+          <CardContent className="p-8 md:p-10">
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              {error && (
+                <div className="bg-danger-50 border border-danger-200 text-danger-700 px-4 py-3.5 rounded-xl flex items-start space-x-3 shadow-sm">
+                  <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-sm font-medium">{error}</span>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="emailOrUsername" className="block text-sm font-semibold text-slate-700 mb-2">
+                    Email or Username
+                  </label>
+                  <Input
+                    id="emailOrUsername"
+                    name="emailOrUsername"
+                    type="text"
+                    autoComplete="username"
+                    required
+                    placeholder="Enter your email or username"
+                    value={emailOrUsername}
+                    onChange={(e) => setEmailOrUsername(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="password" className="block text-sm font-semibold text-slate-700 mb-2">
+                    Password
+                  </label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={isLoading}
+                isLoading={isLoading}
+                className="w-full"
+                size="lg"
+              >
+                {isLoading ? "Signing in..." : "Sign in"}
+              </Button>
+            </form>
+
+            <div className="mt-8 text-center pt-6 border-t border-slate-200">
+              <p className="text-sm text-slate-600">
+                Don&apos;t have an account?{" "}
+                <Link
+                  href="/register"
+                  className="font-semibold text-primary-600 hover:text-primary-700 transition-colors"
+                >
+                  Create one now →
+                </Link>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
