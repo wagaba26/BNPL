@@ -1,0 +1,292 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'BNPL Platform Infrastructure - RDS, S3, ECR, and Security Groups'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues: [development, staging, production]
+    Description: Environment name
+  
+  DatabasePassword:
+    Type: String
+    NoEcho: true
+    Description: Master password for RDS database
+    MinLength: 8
+  
+  DatabaseInstanceClass:
+    Type: String
+    Default: db.t3.micro
+    AllowedValues: [db.t3.micro, db.t3.small, db.t3.medium]
+    Description: RDS instance class
+  
+  AllowedCIDR:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: CIDR block allowed to access RDS (use specific IP for production)
+
+Resources:
+  # VPC and Networking (simplified - assumes default VPC exists)
+  # For production, create custom VPC with private subnets
+  
+  # Security Group for RDS
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for BNPL RDS database
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref BackendSecurityGroup
+          Description: Allow PostgreSQL from backend
+      Tags:
+        - Key: Name
+          Value: !Sub 'bnpl-rds-sg-${Environment}'
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Security Group for Backend
+  BackendSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for BNPL backend API
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          CidrIp: 0.0.0.0/0
+          Description: Allow HTTP access to backend
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: Allow HTTPS access to backend
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic
+      Tags:
+        - Key: Name
+          Value: !Sub 'bnpl-backend-sg-${Environment}'
+        - Key: Environment
+          Value: !Ref Environment
+
+  # RDS Subnet Group (requires existing subnets)
+  # Note: You need to provide subnet IDs from your VPC
+  # DBSubnetGroup:
+  #   Type: AWS::RDS::DBSubnetGroup
+  #   Properties:
+  #     DBSubnetGroupDescription: Subnet group for BNPL RDS
+  #     SubnetIds:
+  #       - subnet-xxxxx
+  #       - subnet-yyyyy
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub 'bnpl-db-subnet-${Environment}'
+
+  # RDS PostgreSQL Instance
+  BNPLDatabase:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub 'bnpl-db-${Environment}'
+      Engine: postgres
+      EngineVersion: '15.4'
+      DBInstanceClass: !Ref DatabaseInstanceClass
+      MasterUsername: bnpl_user
+      MasterUserPassword: !Ref DatabasePassword
+      DBName: bnpl_db
+      AllocatedStorage: 20
+      StorageType: gp3
+      StorageEncrypted: true
+      BackupRetentionPeriod: 7
+      MultiAZ: false  # Set to true for production
+      PubliclyAccessible: false
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      # DBSubnetGroupName: !Ref DBSubnetGroup  # Uncomment if using custom VPC
+      Tags:
+        - Key: Name
+          Value: !Sub 'bnpl-database-${Environment}'
+        - Key: Environment
+          Value: !Ref Environment
+
+  # S3 Bucket for Documents
+  DocumentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'bnpl-documents-${AWS::Region}-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, PUT, POST, DELETE, HEAD]
+            AllowedOrigins: ['*']  # Update with specific origins in production
+            ExposeHeaders: [ETag]
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 30
+      Tags:
+        - Key: Name
+          Value: !Sub 'bnpl-documents-${Environment}'
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ECR Repository for Backend
+  BackendECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: bnpl-backend
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last 10 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+      Tags:
+        - Key: Name
+          Value: bnpl-backend-ecr
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ECR Repository for Frontend
+  FrontendECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: bnpl-frontend
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last 10 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+      Tags:
+        - Key: Name
+          Value: bnpl-frontend-ecr
+        - Key: Environment
+          Value: !Ref Environment
+
+  # IAM Role for Backend (for S3 access)
+  BackendIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'bnpl-backend-role-${Environment}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                Resource: !Sub '${DocumentsBucket}/*'
+      Tags:
+        - Key: Name
+          Value: !Sub 'bnpl-backend-role-${Environment}'
+        - Key: Environment
+          Value: !Ref Environment
+
+Outputs:
+  DatabaseEndpoint:
+    Description: RDS PostgreSQL endpoint
+    Value: !GetAtt BNPLDatabase.Endpoint.Address
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabaseEndpoint'
+
+  DatabasePort:
+    Description: RDS PostgreSQL port
+    Value: !GetAtt BNPLDatabase.Endpoint.Port
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabasePort'
+
+  DatabaseURL:
+    Description: Full database connection URL (password not included)
+    Value: !Sub 'postgresql://bnpl_user:YOUR_PASSWORD@${BNPLDatabase.Endpoint.Address}:${BNPLDatabase.Endpoint.Port}/bnpl_db'
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabaseURL'
+
+  DocumentsBucketName:
+    Description: S3 bucket for document storage
+    Value: !Ref DocumentsBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-DocumentsBucket'
+
+  BackendECRRepositoryURI:
+    Description: ECR repository URI for backend
+    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${BackendECRRepository}'
+    Export:
+      Name: !Sub '${AWS::StackName}-BackendECRURI'
+
+  FrontendECRRepositoryURI:
+    Description: ECR repository URI for frontend
+    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${FrontendECRRepository}'
+    Export:
+      Name: !Sub '${AWS::StackName}-FrontendECRURI'
+
+  BackendSecurityGroupId:
+    Description: Security group ID for backend
+    Value: !Ref BackendSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-BackendSG'
+
+  RDSSecurityGroupId:
+    Description: Security group ID for RDS
+    Value: !Ref RDSSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-RDSSG'
+
+  BackendIAMRoleArn:
+    Description: IAM role ARN for backend ECS tasks
+    Value: !GetAtt BackendIAMRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-BackendRole'
+
