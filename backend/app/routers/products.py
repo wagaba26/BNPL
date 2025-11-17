@@ -1,4 +1,5 @@
 from typing import List
+from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
@@ -6,8 +7,12 @@ from app.core.dependencies import get_current_active_user, require_role
 from app.models.user import User, UserRole
 from app.models.retailer import Retailer
 from app.models.product import Product
+from app.models.lender import Lender
 from app.models.credit_profile import CreditProfile
-from app.schemas.product import ProductCreate, ProductUpdate, ProductResponse
+from app.schemas.product import (
+    ProductCreate, ProductUpdate, ProductResponse, ProductDetailResponse,
+    ProductPrice, ProductBNPL, ProductStock, ProductRetailer
+)
 
 router = APIRouter()
 
@@ -159,4 +164,82 @@ async def delete_product(
     db.delete(db_product)
     db.commit()
     return None
+
+
+@router.get("/{product_id}", response_model=ProductDetailResponse)
+async def get_product(
+    product_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Get detailed product information for checkout."""
+    try:
+        product_id_int = int(product_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid product ID format",
+        )
+
+    # Get product with retailer relationship
+    product = db.query(Product).filter(Product.id == product_id_int).first()
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="PRODUCT_NOT_FOUND",
+        )
+
+    # Get retailer info
+    retailer = db.query(Retailer).filter(Retailer.id == product.retailer_id).first()
+    if not retailer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Retailer not found",
+        )
+
+    # Get lender for BNPL configuration (use first lender or defaults)
+    lender = db.query(Lender).first()
+    
+    # Calculate BNPL details
+    # Default: 20% deposit (as per loan creation logic)
+    min_deposit_percent = 20.0
+    # Default: 3 months tenure (as per loan creation logic - 3 installments)
+    max_tenure_months = 3
+    # Use lender's interest rate if available, otherwise default to 10%
+    interest_rate_percent_per_month = float(lender.base_interest_rate) if lender else 10.0
+
+    # Generate SKU from product ID (fallback if not in DB)
+    sku = f"PRD-{product.id:06d}"
+
+    # Format dates
+    created_at_str = product.created_at.isoformat() if product.created_at else ""
+    updated_at_str = product.updated_at.isoformat() if product.updated_at else created_at_str
+
+    return ProductDetailResponse(
+        id=str(product.id),
+        name=product.name,
+        sku=sku,
+        description=product.description or "",
+        price=ProductPrice(
+            currency="UGX",  # Default currency
+            amount=float(product.price)
+        ),
+        bnpl=ProductBNPL(
+            eligible=product.bnpl_eligible,
+            min_deposit_percent=min_deposit_percent,
+            max_tenure_months=max_tenure_months,
+            interest_rate_percent_per_month=interest_rate_percent_per_month
+        ),
+        stock=ProductStock(
+            available_quantity=product.stock,
+            is_active=product.stock > 0
+        ),
+        retailer=ProductRetailer(
+            id=str(retailer.id),
+            name=retailer.business_name
+        ),
+        images=[],  # Empty array for now - can be extended later
+        created_at=created_at_str,
+        updated_at=updated_at_str
+    )
 

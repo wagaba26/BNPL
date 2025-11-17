@@ -8,12 +8,17 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
+// Role type definition - matches the backend enum
+type UserRole = "CUSTOMER" | "RETAILER" | "LENDER";
+
 export default function LoginPage() {
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  // Role selection state - for UI purposes and potential filtering
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const { login, user } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,13 +29,83 @@ export default function LoginPage() {
     try {
       const success = await login(emailOrUsername, password);
       if (success) {
+        // Wait a moment for user state to update and token to be stored
         await new Promise((resolve) => setTimeout(resolve, 500));
-        router.push("/");
-        router.refresh();
+        
+        // ROLE-BASED REDIRECT: After successful login, redirect user to their role-specific dashboard
+        // The role is stored in the user object returned from the auth API and persisted in localStorage
+        // This ensures users are automatically routed to the correct dashboard based on their account role
+        let redirectPath = "/";
+        if (typeof window !== 'undefined') {
+          const storedUserStr = localStorage.getItem('bnpl_user');
+          if (storedUserStr) {
+            try {
+              const storedUser = JSON.parse(storedUserStr);
+              const role = storedUser.role?.toUpperCase();
+              console.log("Redirecting based on role:", role);
+              if (role === "CUSTOMER") {
+                // Always redirect to dashboard - KYC check is handled in the layout
+                redirectPath = "/customer/dashboard";
+              } else if (role === "RETAILER") {
+                redirectPath = "/retailer/dashboard";
+              } else if (role === "LENDER") {
+                redirectPath = "/lender/dashboard";
+              }
+            } catch (e) {
+              console.error("Error parsing stored user:", e);
+            }
+          } else {
+            // If no user in localStorage, check context
+            if (user) {
+              const role = user.role?.toUpperCase();
+              if (role === "CUSTOMER") {
+                // Always redirect to dashboard - KYC check is handled in the layout
+                redirectPath = "/customer/dashboard";
+              } else if (role === "RETAILER") {
+                redirectPath = "/retailer/dashboard";
+              } else if (role === "LENDER") {
+                redirectPath = "/lender/dashboard";
+              }
+            }
+          }
+        }
+        
+        console.log("Redirecting to:", redirectPath);
+        router.push(redirectPath);
+        // Don't call refresh immediately - let the navigation happen first
+      } else {
+        setError("Login failed. Please try again.");
       }
     } catch (err: any) {
       console.error("Login error in page:", err);
-      const errorMessage = err?.response?.data?.detail || err?.message || "Invalid email/username or password. Please check your credentials and try again.";
+      console.error("Error details:", {
+        status: err.response?.status,
+        data: err.response?.data,
+        message: err.message,
+        url: err.config?.url,
+        baseURL: err.config?.baseURL,
+      });
+      
+      // Better error messages
+      let errorMessage = "Login failed. Please try again.";
+      
+      if (!err.response) {
+        // Network error - backend not reachable
+        const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+        errorMessage = `Cannot connect to the backend server at ${apiUrl}. Please ensure:
+          - The backend server is running
+          - NEXT_PUBLIC_API_BASE_URL is set correctly in your .env.local file
+          - You have an active internet connection`;
+      } else if (err.response?.status === 401) {
+        errorMessage = err.response?.data?.detail || "Invalid email/username or password. Please check your credentials and try again.";
+      } else if (err.response?.status === 400) {
+        errorMessage = err.response?.data?.detail || "Invalid request. Please check your input and try again.";
+      } else if (err.response?.status === 500) {
+        errorMessage = "Server error occurred. Please try again later or contact support.";
+      } else {
+        errorMessage = err.response?.data?.detail || err.message || "Login failed. Please try again.";
+      }
+      
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -72,6 +147,66 @@ export default function LoginPage() {
               )}
 
               <div className="space-y-4">
+                {/* Role Selection - helps users identify which account type they're logging into */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    I am logging in as <span className="text-primary-600">({selectedRole || "Select role"})</span>
+                  </label>
+                  <div className="grid grid-cols-3 gap-2" role="group" aria-label="Select login role">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSelectedRole("CUSTOMER");
+                      }}
+                      aria-pressed={selectedRole === "CUSTOMER"}
+                      className={`px-4 py-3 rounded-xl text-sm font-medium transition-all cursor-pointer border-2 relative z-10 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+                        selectedRole === "CUSTOMER"
+                          ? "bg-primary-600 text-white shadow-lg border-primary-600"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200"
+                      }`}
+                    >
+                      Customer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSelectedRole("RETAILER");
+                      }}
+                      aria-pressed={selectedRole === "RETAILER"}
+                      className={`px-4 py-3 rounded-xl text-sm font-medium transition-all cursor-pointer border-2 relative z-10 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+                        selectedRole === "RETAILER"
+                          ? "bg-primary-600 text-white shadow-lg border-primary-600"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200"
+                      }`}
+                    >
+                      Retailer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSelectedRole("LENDER");
+                      }}
+                      aria-pressed={selectedRole === "LENDER"}
+                      className={`px-4 py-3 rounded-xl text-sm font-medium transition-all cursor-pointer border-2 relative z-10 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+                        selectedRole === "LENDER"
+                          ? "bg-primary-600 text-white shadow-lg border-primary-600"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200"
+                      }`}
+                    >
+                      Lender
+                    </button>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">
+                    Select your account type to continue. Your role is determined by your account.
+                  </p>
+                </div>
+
                 <div>
                   <label htmlFor="emailOrUsername" className="block text-sm font-semibold text-slate-700 mb-2">
                     Email or Username

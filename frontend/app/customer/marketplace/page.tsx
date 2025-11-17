@@ -1,6 +1,7 @@
 "use client";
 
-import { db } from "@/lib/instant";
+import { useQuery } from "@tanstack/react-query";
+import { productsApi } from "@/lib/api/products";
 import Link from "next/link";
 import Image from "next/image";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -9,15 +10,13 @@ import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function MarketplacePage() {
-  const { data, isLoading } = db.useQuery({
-    products: {
-      $: {
-        where: { isActive: true },
-      },
-    },
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ["products"],
+    queryFn: () => productsApi.getProducts(),
   });
 
-  const products = data?.products ? Object.values(data.products) : [];
+  // Filter only BNPL eligible products
+  const bnplProducts = products.filter((p) => p.bnpl_eligible);
 
   return (
     <div className="max-w-7xl mx-auto w-full">
@@ -40,7 +39,7 @@ export default function MarketplacePage() {
             </Card>
           ))}
         </div>
-      ) : !products || products.length === 0 ? (
+      ) : !bnplProducts || bnplProducts.length === 0 ? (
         <Card>
           <CardContent className="p-12 text-center">
             <svg
@@ -66,18 +65,19 @@ export default function MarketplacePage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {products.map((product: any) => {
-            const deposit = (product.price * product.depositPercentage) / 100;
+          {bnplProducts.map((product) => {
+            const deposit = product.deposit || product.price * 0.1; // Default 10% deposit
             const remaining = product.price - deposit;
-            const monthlyPayment = remaining / (product.installmentMonths || 3);
+            const installments = product.installments || 3;
+            const monthlyPayment = remaining / installments;
 
             return (
               <Card key={product.id} hover className="flex flex-col overflow-hidden">
                 {/* Product Image */}
                 <div className="relative h-48 w-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center overflow-hidden">
-                  {product.imageUrl ? (
+                  {product.image_url ? (
                     <Image
-                      src={product.imageUrl}
+                      src={product.image_url}
                       alt={product.name}
                       fill
                       className="object-cover"
@@ -136,7 +136,7 @@ export default function MarketplacePage() {
                       </div>
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-gray-600">
-                          {product.installmentMonths || 3}x Monthly
+                          {installments}x Monthly
                         </span>
                         <span className="font-semibold text-gray-900">
                           UGX {Math.ceil(monthlyPayment).toLocaleString()}
@@ -145,17 +145,17 @@ export default function MarketplacePage() {
                     </div>
 
                     {/* Stock */}
-                    {product.stockQuantity !== undefined && (
+                    {product.stock !== undefined && (
                       <div className="flex items-center justify-between text-xs pt-1">
                         <span className="text-gray-500">Stock</span>
                         <span
                           className={`font-semibold ${
-                            product.stockQuantity > 0
+                            product.stock > 0
                               ? 'text-green-600'
                               : 'text-red-600'
                           }`}
                         >
-                          {product.stockQuantity} available
+                          {product.stock} available
                         </span>
                       </div>
                     )}
@@ -169,7 +169,7 @@ export default function MarketplacePage() {
                     <Button
                       variant="primary"
                       className="w-full"
-                      disabled={product.stockQuantity === 0}
+                      disabled={product.stock === 0}
                     >
                       Buy with BNPL
                     </Button>

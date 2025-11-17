@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.seed import seed_dev_accounts
-from app.routers import auth, credit_profile, products, loans, credit
+from app.routers import auth, credit_profile, products, loans, credit, lender, retailer
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -31,6 +31,8 @@ app.include_router(credit_profile.router, prefix="/credit-profile", tags=["Credi
 app.include_router(credit.router, prefix="/credit", tags=["Credit Scoring"])
 app.include_router(products.router, prefix="/products", tags=["Products"])
 app.include_router(loans.router, prefix="/loans", tags=["Loans"])
+app.include_router(lender.router, prefix="/lender", tags=["Lender"])
+app.include_router(retailer.router, prefix="/retailer", tags=["Retailer"])
 
 
 @app.get("/")

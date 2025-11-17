@@ -11,6 +11,7 @@ class Retailer(Base):
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
     business_name = Column(String, nullable=False)
     contact_person = Column(String, nullable=True)
+    trading_license = Column(String, nullable=True)  # Trading license number for due diligence
     payout_account = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

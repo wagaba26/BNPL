@@ -1,13 +1,17 @@
 'use client';
 
 import { useProducts } from '@/lib/hooks/queries';
+import { useAuth } from '@/lib/hooks/useAuth';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 
 export default function Home() {
-  const { data: products, isLoading, error } = useProducts();
+  const { isAuthenticated } = useAuth();
+  const { data: products, isLoading, error } = useProducts({
+    enabled: isAuthenticated, // Only fetch if authenticated
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -89,7 +93,22 @@ export default function Home() {
           </p>
         </div>
 
-        {isLoading ? (
+        {!isAuthenticated ? (
+          <Card className="max-w-md mx-auto">
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Register to Browse Products</h3>
+              <p className="text-gray-600 mb-4">Create an account to see available BNPL products</p>
+              <Link href="/register">
+                <Button size="lg">Get Started</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        ) : isLoading ? (
           <div className="text-center py-20">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
             <p className="mt-4 text-gray-500 text-lg">Loading products...</p>

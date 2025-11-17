@@ -41,9 +41,21 @@ export default function CustomerLayout({
         } else {
           router.replace("/login");
         }
+        return;
+      }
+
+      // Check KYC completion for customers (skip check if already on KYC page or dashboard)
+      // Allow access to dashboard and KYC page without KYC completion
+      if (normalizedRole === "CUSTOMER" && pathname !== "/customer/kyc" && pathname !== "/customer/dashboard") {
+        const kycCompleted = localStorage.getItem("kyc_completed");
+        if (kycCompleted !== "true") {
+          // Only redirect to KYC if not on dashboard or KYC page
+          router.replace("/customer/kyc");
+          return;
+        }
       }
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, router, pathname]);
 
   const handleLogout = () => {
     logout();
@@ -73,6 +85,12 @@ export default function CustomerLayout({
   ];
 
   const currentPage = navItems.find((item) => pathname.startsWith(item.href));
+  const isKYCPage = pathname === "/customer/kyc";
+
+  // If on KYC page, render without sidebar/nav
+  if (isKYCPage) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50 flex flex-col md:flex-row">

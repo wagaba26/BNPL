@@ -9,6 +9,9 @@ class UserRegister(BaseModel):
     username: str | None = None  # Optional username
     password: str
     phone: str | None = None
+    role: UserRole | None = None  # Optional role, defaults to CUSTOMER
+    admin_code: str | None = None  # Required for LENDER role
+    trading_license: str | None = None  # Required for RETAILER role
     
     @field_validator('username')
     @classmethod
