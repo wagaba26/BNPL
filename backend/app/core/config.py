@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    # API Keys
+    RESEND_API_KEY: Optional[str] = None
+
     # Application
     APP_NAME: str = "BNPL Platform"
     DEBUG: bool = True

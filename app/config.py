@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     MASTERCARD_API_KEY: Optional[str] = None
     NIN_VERIFICATION_API_KEY: Optional[str] = None
     KYC_VERIFICATION_API_KEY: Optional[str] = None
+    RESEND_API_KEY: Optional[str] = None
 
     # Application
     DEBUG: bool = True
