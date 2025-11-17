@@ -17,6 +17,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
+    username = Column(String, unique=True, index=True, nullable=True)  # Optional username for login
     email = Column(String, unique=True, index=True, nullable=False)
     phone = Column(String, nullable=True)
     password_hash = Column(String, nullable=False)
@@ -30,6 +31,8 @@ class User(Base):
     lender_profile = relationship("Lender", back_populates="user", uselist=False)
     credit_profile = relationship("CreditProfile", back_populates="user", uselist=False)
     loans = relationship("Loan", back_populates="customer", foreign_keys="Loan.customer_id")
+    credit_score_events = relationship("CreditScoreEvent", back_populates="user")
+    credit_documents = relationship("CreditDocument", back_populates="user", foreign_keys="CreditDocument.user_id")
 
     def __repr__(self):
         return f"<User {self.email}>"

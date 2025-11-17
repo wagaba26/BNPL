@@ -1,37 +1,39 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/hooks/useAuth';
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/contexts/AuthContext";
 
 export default function RetailerLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, role } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/retailer/dashboard';
-      router.push('/login?redirect=' + encodeURIComponent(currentPath));
-      return;
-    }
+    if (!isLoading) {
+      if (!user) {
+        router.push("/login");
+        return;
+      }
 
-    if (role && role !== 'RETAILER') {
-      // Redirect to appropriate dashboard
-      if (role === 'CUSTOMER') {
-        router.push('/customer/dashboard');
-      } else if (role === 'LENDER') {
-        router.push('/lender/dashboard');
-      } else {
-        router.push('/login');
+      const normalizedRole = user.role?.toUpperCase();
+      if (normalizedRole !== "RETAILER") {
+        // Redirect to appropriate dashboard
+        if (normalizedRole === "CUSTOMER") {
+          router.push("/customer/dashboard");
+        } else if (normalizedRole === "LENDER") {
+          router.push("/lender/dashboard");
+        } else {
+          router.push("/login");
+        }
       }
     }
-  }, [isAuthenticated, role, router]);
+  }, [user, isLoading, router]);
 
-  if (!isAuthenticated || role !== 'RETAILER') {
+  if (isLoading || !user || user.role?.toUpperCase() !== "RETAILER") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <p className="text-gray-500">Loading...</p>
@@ -41,4 +43,3 @@ export default function RetailerLayout({
 
   return <main className="min-h-screen bg-gray-50">{children}</main>;
 }
-

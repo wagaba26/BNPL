@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.routers import auth, credit_profile, products, loans
+from app.core.seed import seed_dev_accounts
+from app.routers import auth, credit_profile, products, loans, credit
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -27,6 +28,7 @@ app.add_middleware(
 # Register routers
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(credit_profile.router, prefix="/credit-profile", tags=["Credit Profile"])
+app.include_router(credit.router, prefix="/credit", tags=["Credit Scoring"])
 app.include_router(products.router, prefix="/products", tags=["Products"])
 app.include_router(loans.router, prefix="/loans", tags=["Loans"])
 
@@ -43,4 +45,19 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Seed development accounts if DEV_SEED is enabled."""
+    if settings.DEV_SEED:
+        print("[STARTUP] DEV_SEED is enabled, seeding development accounts...")
+        try:
+            seed_dev_accounts()
+            print("[STARTUP] Development accounts seeded successfully!")
+        except Exception as e:
+            print(f"[STARTUP] Error seeding development accounts: {e}")
+            # Don't raise - allow app to start even if seeding fails
+    else:
+        print("[STARTUP] DEV_SEED is disabled, skipping development account seeding")
 

@@ -4,7 +4,9 @@ from typing import Optional
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "postgresql://bnpl_user:bnpl_password@localhost:5432/bnpl_db"
+    # Default to SQLite for easy development (no setup required)
+    # For production, use PostgreSQL: postgresql://bnpl_user:bnpl_password@localhost:5432/bnpl_db
+    DATABASE_URL: str = "sqlite:///./bnpl_dev.db"
 
     # JWT
     SECRET_KEY: str = "your-secret-key-change-in-production"
@@ -14,6 +16,7 @@ class Settings(BaseSettings):
     # Application
     APP_NAME: str = "BNPL Platform"
     DEBUG: bool = True
+    DEV_SEED: bool = False  # Set to True to seed development accounts
 
     class Config:
         env_file = ".env"

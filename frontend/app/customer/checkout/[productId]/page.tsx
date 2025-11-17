@@ -1,24 +1,21 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useProducts, useCreateBNPL } from '@/lib/hooks/queries';
-import { useState, useMemo } from 'react';
+import { useProduct } from '@/lib/hooks/queries';
+import { useCreateBNPL } from '@/lib/hooks/queries';
+import { useState } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import Link from 'next/link';
 
 export default function CheckoutPage() {
   const params = useParams();
   const router = useRouter();
-  const productId = parseInt(params.productId as string);
-  const { data: products, isLoading } = useProducts();
+  const productId = params.productId as string;
+  const { data: product, isLoading } = useProduct(productId);
   const createBNPL = useCreateBNPL();
   const { isAuthenticated } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-
-  const product = useMemo(() => {
-    return products?.find(p => p.id === productId);
-  }, [products, productId]);
 
   if (isLoading) {
     return (
@@ -38,11 +35,10 @@ export default function CheckoutPage() {
     );
   }
 
-  // Calculate estimated deposit (20% of price)
-  const estimatedDeposit = product.price * 0.20;
-  const estimatedPrincipal = product.price - estimatedDeposit;
-  // Estimate 3 installments (backend will create this)
-  const estimatedInstallmentAmount = estimatedPrincipal / 3;
+  const installmentAmount =
+    (product.price - product.deposit) / product.installments;
+  const installmentPeriod =
+    product.installment_frequency === 'weekly' ? 'week' : 'month';
 
   const handleConfirm = async () => {
     if (!isAuthenticated) {
@@ -118,34 +114,42 @@ export default function CheckoutPage() {
           </div>
 
           <div className="flex justify-between py-2 border-t">
-            <span className="text-gray-600">Estimated Deposit (20%)</span>
+            <span className="text-gray-600">Required Deposit</span>
             <span className="font-semibold text-primary-600">
-              UGX {estimatedDeposit.toLocaleString()}
+              UGX {product.deposit.toLocaleString()}
             </span>
           </div>
 
           <div className="flex justify-between py-2 border-t">
             <span className="text-gray-600">Amount to Finance</span>
             <span className="font-semibold text-gray-900">
-              UGX {estimatedPrincipal.toLocaleString()}
+              UGX {(product.price - product.deposit).toLocaleString()}
             </span>
           </div>
 
           <div className="mt-6 pt-6 border-t">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Estimated Installment Breakdown
+              Installment Breakdown
             </h3>
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-sm text-gray-600 mb-2">
-                3 installments of{' '}
+                {product.installments} installments of{' '}
                 <span className="font-semibold text-gray-900">
-                  UGX {estimatedInstallmentAmount.toLocaleString()}
+                  UGX {installmentAmount.toLocaleString()}
                 </span>{' '}
-                per month
+                per {installmentPeriod}
               </p>
-              <p className="text-xs text-gray-500 mt-2">
-                * Final amounts will be calculated when you confirm the BNPL request
-              </p>
+              <div className="mt-4 space-y-2">
+                {Array.from({ length: product.installments }).map((_, idx) => (
+                  <div
+                    key={idx}
+                    className="flex justify-between text-sm text-gray-600"
+                  >
+                    <span>Installment {idx + 1}</span>
+                    <span>UGX {installmentAmount.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 

@@ -90,10 +90,7 @@ export default function CustomerDashboard() {
                 <p className="text-sm text-gray-500 mt-2">
                   Total outstanding: UGX{' '}
                   {activeLoans
-                    .reduce((sum, loan) => {
-                      const unpaidInstallments = loan.installments.filter(i => !i.paid);
-                      return sum + unpaidInstallments.reduce((s, i) => s + i.amount, 0);
-                    }, 0)
+                    .reduce((sum, loan) => sum + loan.outstanding_balance, 0)
                     .toLocaleString()}
                 </p>
               )}

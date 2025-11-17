@@ -1,58 +1,89 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuthStore } from '@/lib/store/authStore';
-import { authApi } from '@/lib/api/auth';
-import Link from 'next/link';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useAuth } from "@/lib/contexts/AuthContext";
 
 export default function RegisterPage() {
+  const [formData, setFormData] = useState({
+    email: "",
+    phone: "",
+    fullName: "",
+    password: "",
+    confirmPassword: "",
+    role: "customer" as "customer" | "retailer" | "lender",
+  });
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { register } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const login = useAuthStore((state) => state.login);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const redirectPath = searchParams?.get('redirect') || '/customer/dashboard';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
+    setError("");
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
+    setIsLoading(true);
 
     try {
-      const registerData = {
-        name,
-        email,
-        password,
-        phone: phone || undefined,
-      };
+      const success = await register({
+        email: formData.email,
+        phone: formData.phone,
+        fullName: formData.fullName,
+        password: formData.password,
+        role: formData.role,
+      });
 
-      const response = await authApi.register(registerData);
-      login(response.access_token, response.user);
-
-      // Redirect to the specified path or customer dashboard
-      router.push(redirectPath);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Registration failed. Please try again.');
+      if (success) {
+        // Wait for auth state to update
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        
+        // Redirect based on role
+        if (formData.role === "customer") {
+          router.push("/customer/dashboard");
+        } else if (formData.role === "retailer") {
+          router.push("/retailer/dashboard");
+        } else if (formData.role === "lender") {
+          router.push("/lender/dashboard");
+        } else {
+          router.push("/");
+        }
+        router.refresh();
+      } else {
+        setError("Registration failed. Email may already be in use.");
+      }
+    } catch (err) {
+      setError("An error occurred. Please try again.");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create your account
+            Create your Shift account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Register as a customer to start shopping with Shift
+            Or{" "}
+            <Link
+              href="/login"
+              className="font-medium text-primary-600 hover:text-primary-500"
+            >
+              sign in to your existing account
+            </Link>
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -61,26 +92,24 @@ export default function RegisterPage() {
               {error}
             </div>
           )}
-
-          <div className="rounded-md shadow-sm space-y-4">
+          <div className="space-y-4">
             <div>
-              <label htmlFor="name" className="sr-only">
-                Full name
+              <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
+                Full Name
               </label>
               <input
-                id="name"
-                name="name"
+                id="fullName"
+                name="fullName"
                 type="text"
                 required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="appearance-none rounded-lg relative block w-full px-4 py-2.5 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-shadow"
-                placeholder="Full name"
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                placeholder="John Doe"
+                value={formData.fullName}
+                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
               />
             </div>
-
             <div>
-              <label htmlFor="email" className="sr-only">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email address
               </label>
               <input
@@ -89,31 +118,46 @@ export default function RegisterPage() {
                 type="email"
                 autoComplete="email"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none rounded-lg relative block w-full px-4 py-2.5 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-shadow"
-                placeholder="Email address"
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                placeholder="you@example.com"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
             </div>
-
             <div>
-              <label htmlFor="phone" className="sr-only">
-                Phone number (optional)
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                Phone Number
               </label>
               <input
                 id="phone"
                 name="phone"
                 type="tel"
-                autoComplete="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="appearance-none rounded-lg relative block w-full px-4 py-2.5 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-shadow"
-                placeholder="Phone number (optional)"
+                required
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                placeholder="+256 700 000 000"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
             </div>
-
             <div>
-              <label htmlFor="password" className="sr-only">
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                Account Type
+              </label>
+              <select
+                id="role"
+                name="role"
+                required
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                value={formData.role}
+                onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+              >
+                <option value="customer">Customer</option>
+                <option value="retailer">Retailer</option>
+                <option value="lender">Lender</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Password
               </label>
               <input
@@ -122,10 +166,26 @@ export default function RegisterPage() {
                 type="password"
                 autoComplete="new-password"
                 required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none rounded-lg relative block w-full px-4 py-2.5 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-shadow"
-                placeholder="Password"
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                placeholder="At least 6 characters"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              />
+            </div>
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                Confirm Password
+              </label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                required
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                placeholder="Confirm your password"
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
               />
             </div>
           </div>
@@ -133,24 +193,14 @@ export default function RegisterPage() {
           <div>
             <button
               type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transition-all"
+              disabled={isLoading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Creating account...' : 'Register'}
+              {isLoading ? "Creating account..." : "Create account"}
             </button>
-          </div>
-
-          <div className="text-center">
-            <Link
-              href="/login"
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-            >
-              Already have an account? Sign in here
-            </Link>
           </div>
         </form>
       </div>
     </div>
   );
 }
-

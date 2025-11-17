@@ -1,61 +1,92 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuthStore } from '@/lib/store/authStore';
-import { authApi } from '@/lib/api/auth';
-import Link from 'next/link';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useAuth } from "@/lib/contexts/AuthContext";
 
 export default function LoginPage() {
+  const [emailOrUsername, setEmailOrUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { login, user } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const login = useAuthStore((state) => state.login);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+
+  const getDashboardPath = (role: string) => {
+    // Handle both uppercase and lowercase role values
+    const normalizedRole = role?.toUpperCase();
+    switch (normalizedRole) {
+      case "CUSTOMER":
+        return "/customer/dashboard";
+      case "RETAILER":
+        return "/retailer/dashboard";
+      case "LENDER":
+        return "/lender/dashboard";
+      default:
+        return "/";
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
+    setError("");
+    setIsLoading(true);
 
     try {
-      const loginData = { email, password };
-
-      const response = await authApi.login(loginData);
-      login(response.access_token, response.user);
-
-      // Check for redirect parameter first
-      const redirectPath = searchParams?.get('redirect');
-      if (redirectPath) {
-        router.push(redirectPath);
-        return;
-      }
-
-      // Otherwise redirect based on role
-      const role = response.user.role;
-      if (role === 'CUSTOMER') {
-        router.push('/customer/dashboard');
-      } else if (role === 'RETAILER') {
-        router.push('/retailer/dashboard');
-      } else if (role === 'LENDER') {
-        router.push('/lender/dashboard');
+      const success = await login(emailOrUsername, password);
+      if (success) {
+        // Wait a moment for auth state to update
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        
+        // Get the user from context (it should be set by now)
+        // If user is available, redirect to their dashboard
+        // Otherwise, wait a bit more and check again
+        let currentUser = user;
+        if (!currentUser) {
+          await new Promise((resolve) => setTimeout(resolve, 200));
+          // Try to get user from localStorage as fallback
+          const storedUserStr = localStorage.getItem("bnpl_user");
+          if (storedUserStr) {
+            currentUser = JSON.parse(storedUserStr);
+          }
+        }
+        
+        if (currentUser && currentUser.role) {
+          const dashboardPath = getDashboardPath(currentUser.role);
+          router.push(dashboardPath);
+          router.refresh();
+        } else {
+          // Fallback: redirect to home page
+          router.push("/");
+          router.refresh();
+        }
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed. Please try again.');
+      console.error("Login error in page:", err);
+      const errorMessage = err?.response?.data?.detail || err?.message || "Invalid email/username or password. Please check your credentials and try again.";
+      setError(errorMessage);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
+            Sign in to Shift
           </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Or{" "}
+            <Link
+              href="/register"
+              className="font-medium text-primary-600 hover:text-primary-500"
+            >
+              create a new account
+            </Link>
+          </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
@@ -63,26 +94,24 @@ export default function LoginPage() {
               {error}
             </div>
           )}
-
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
-              <label htmlFor="email" className="sr-only">
-                Email address
+              <label htmlFor="emailOrUsername" className="sr-only">
+                Email address or username
               </label>
               <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
+                id="emailOrUsername"
+                name="emailOrUsername"
+                type="text"
+                autoComplete="username"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none rounded-lg relative block w-full px-4 py-2.5 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm transition-shadow"
-                placeholder="Email address"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                placeholder="Email address or username"
+                value={emailOrUsername}
+                onChange={(e) => setEmailOrUsername(e.target.value)}
               />
             </div>
-
-            <div className="mt-4">
+            <div>
               <label htmlFor="password" className="sr-only">
                 Password
               </label>
@@ -92,10 +121,10 @@ export default function LoginPage() {
                 type="password"
                 autoComplete="current-password"
                 required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none rounded-lg relative block w-full px-4 py-2.5 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm transition-shadow"
-                placeholder="Password"
               />
             </div>
           </div>
@@ -103,24 +132,14 @@ export default function LoginPage() {
           <div>
             <button
               type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transition-all"
+              disabled={isLoading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Signing in...' : 'Sign in'}
+              {isLoading ? "Signing in..." : "Sign in"}
             </button>
-          </div>
-
-          <div className="text-center">
-            <Link
-              href="/register"
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-            >
-              Don&apos;t have an account? Register here
-            </Link>
           </div>
         </form>
       </div>
     </div>
   );
 }
-
